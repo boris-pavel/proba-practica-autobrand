@@ -10,4 +10,6 @@ app:
     base-url: https://www.web-scraping.dev
     username: user123
     password: password
-    cron-enabled: false
+    cron-enabled: false           # OFF în dev — trigger manual
+    run-on-startup: false          # OFF în dev — start curat fără hit pe rețea
+    # cron: "*/30 * * * * *"

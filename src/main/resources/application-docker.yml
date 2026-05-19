@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/autobrand     # NU localhost — în Docker se folosește numele serviciului
+    username: autobrand
+    password: dev_password
+
+app:
+  scraping:
+    base-url: https://www.web-scraping.dev
+    username: ${SCRAPER_USERNAME:user123}
+    password: ${SCRAPER_PASSWORD:password}
+    cron-enabled: true             # ON în containerized environment
+    run-on-startup: true            # auto-scrape la pornire pentru demo recruiter
