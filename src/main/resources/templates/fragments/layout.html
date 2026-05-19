@@ -32,6 +32,9 @@
             </div>
             <div class="flex-1 px-2 text-xl font-bold">🚗 Autobrand</div>
             <button class="btn btn-ghost btn-circle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+            <form th:action="@{/logout}" method="post" class="inline">
+                <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+            </form>
         </div>
 
         <!-- Flash messages -->

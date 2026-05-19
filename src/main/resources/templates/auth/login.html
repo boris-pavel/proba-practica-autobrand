@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org" data-theme="corporate">
+<head>
+    <meta charset="UTF-8">
+    <title>Login — Autobrand</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen flex items-center justify-center bg-base-200">
+<div class="card w-96 bg-base-100 shadow-xl">
+    <div class="card-body">
+        <h1 class="text-3xl font-bold text-center">🚗 Autobrand</h1>
+        <p class="text-center opacity-70 text-sm">siguranța mișcării</p>
+
+        <form th:action="@{/login}" method="post" class="space-y-3 mt-4">
+            <div th:if="${param.error}" class="alert alert-error text-sm">Invalid credentials</div>
+            <div th:if="${param.logout}" class="alert alert-success text-sm">Logged out</div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Username</span></label>
+                <input type="text" name="username" class="input input-bordered" required autofocus/>
+            </div>
+            <div class="form-control">
+                <label class="label"><span class="label-text">Password</span></label>
+                <input type="password" name="password" class="input input-bordered" required/>
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Sign in</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
