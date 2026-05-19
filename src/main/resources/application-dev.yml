@@ -1,10 +1,13 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:55432/autobrand   # ← schimbat de la 5432
+    url: jdbc:postgresql://localhost:55432/autobrand
     username: autobrand
     password: dev_password
     driver-class-name: org.postgresql.Driver
 
 app:
   scraping:
+    base-url: https://www.web-scraping.dev
+    username: user123
+    password: password
     cron-enabled: false
