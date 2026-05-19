@@ -377,7 +377,7 @@ app:
 ### Task 1.8: First Flyway migration (smoke test)
 
 **Files:**
-- Create: `src/main/resources/db/migration/V1__init_smoke.sql`
+- Create: `src/main/resources/db/migration/V1__create_product_table.sql`
 
 - [ ] **Step 1: Write migration:**
 
@@ -490,7 +490,7 @@ Spring Boot Parent POM gestionează versiunile (BOM) — nu trebuie să specific
 ### Task 2.2: Replace smoke migration cu Product schema
 
 **Files:**
-- Delete: `src/main/resources/db/migration/V1__init_smoke.sql`
+- Delete: `src/main/resources/db/migration/V1__create_product_table.sql`
 - Create: `src/main/resources/db/migration/V1__create_product_table.sql`
 
 - [ ] **Step 1: Drop smoke table din DB**
