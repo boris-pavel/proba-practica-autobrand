@@ -81,9 +81,9 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 | Auth | **Spring Security + BCrypt** | Vezi 2.9 |
 | Test DB strategy | **Testcontainers Postgres** | Vezi 2.10 |
 | CSV export | **Apache Commons CSV 1.11** | Standard Apache; tested, simplu API. Alternativa OpenCSV are licență mai restrictivă (LGPL în versiuni vechi). |
-| HTTP client (BNR) | **Spring `RestClient`** (Java 17+) | Modern, fluent, înlocuiește `RestTemplate` (în maintenance) și e mai simplu decât `WebClient` (care e reactiv, overkill aici). |
-| XML parsing (BNR) | **Jackson Dataformat XML** | Deja în clasa de dependențe Spring; annotation-driven. Alternativa JAXB e mai verbose, depreciated din Java 11 (mutat la EE). |
-| Cron scheduler | **Spring `@Scheduled`** | Built-in, zero dependencies. **Quartz exclus**: state persistent în DB, clustering, complex API — toate inutile pentru un cron simplu cu fereastră fixă 12–18. |
+| HTTP client (BNR) | **Spring `RestClient`** (Spring 6.1+ / Boot 3.2+) | Modern, fluent, înlocuiește `RestTemplate` (în maintenance) și e mai simplu decât `WebClient` (care e reactiv, overkill aici). |
+| XML parsing (BNR) | **Jackson Dataformat XML** | Deja în clasa de dependențe Spring; annotation-driven. Alternativa JAXB a fost scoasă din Java SE 11 (JEP 320, mutată la Jakarta EE) — trebuie adăugată ca dependență separată dacă o folosești. |
+| Cron scheduler | **Spring `@Scheduled`** | Built-in, zero dependencies. **Quartz exclus**: aduce JobStore configurabil (DB sau RAM), clustering, misfire policies — utile la scale, inutile pentru un cron simplu cu fereastră fixă 12–18. |
 | Validation | **Bean Validation (Hibernate Validator)** | JSR 380 standard; declarative; Spring integrare nativă. Singura alternativă realistă (custom validators) duplică efort. |
 | Reducere boilerplate | **Lombok** | `@Data`, `@Builder`, `@Slf4j` taie sute de linii de getters/setters. Alternative: records Java 21 (parțial, dar entități JPA nu pot fi records din cauza proxy-urilor Hibernate). |
 | Logging | **SLF4J + Logback** | Default Spring Boot. Alternative (Log4j2) ar fi necesar `exclusions` în pom; câștig minim. |
@@ -160,7 +160,7 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 | **JSP** | Legacy Java EE standard. | **Deprecated pentru Spring Boot embedded servers** (Tomcat embedded nu suportă JSP fără config special); **scripting Java în template** încurajează rău mixaj logică/view; **fără hot reload** decent. |
 | **Mustache / Handlebars Java** | Logic-less template philosophy; folosit cross-language. | **Prea limitat:** fără if-else complex, fără fragments cu parametri. Trebuie multă logică în controller, ceea ce face controller-ul gros. **Spring Boot integration există dar marginală.** |
 | **Pebble** | Inspirat din Twig (PHP), foarte concis. | **Comunitate mică în Java.** Risc de "cine altcineva îl folosește?" la interviu. **Spring Boot integration via 3rd party**, nu oficial. |
-| **Velocity** | Vechi Apache, încă funcțional. | **Project-ul a fost archived/retired în 2021** efectiv. Maintenance abandonat. |
+| **Velocity** | Vechi Apache, încă funcțional (Velocity Engine 2.4 din mai 2024). | **Maintenance ritm foarte scăzut** (release-uri rare, comunitate redusă). Pierde teren în favoarea Thymeleaf și FreeMarker — la interviu, "Velocity?" sună a "n-am cercetat ce e curent". |
 | **React / Vue rendered server-side** | Modern, isomorphic. | **Cere Node.js runtime** (Nashorn deprecated, GraalJS overhead). Cross-stack complexity prohibitive pentru beginner Java + 1 săptămână. |
 
 **Interview defense:** *"Thymeleaf e standardul de-facto Spring Boot. FreeMarker e tehnic competitiv, dar Thymeleaf are avantajul HTML-valid prototyping — designerul/PM-ul poate deschide fișierul direct în browser. La scale care contează (mii req/sec), aș reconsidera FreeMarker pentru câștig de throughput."*
@@ -174,7 +174,7 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 2. **Atribute HTML declarative:** `<button hx-post="/products/123/delete" hx-target="#row-123" hx-swap="outerHTML">Delete</button>` — fără JS scris manual.
 3. **Bundle minim:** ~14KB minified+gzipped. Zero build pipeline.
 4. **Sinergie perfectă cu Thymeleaf** — Spring controller returnează un fragment Thymeleaf (`return "products/list :: row(${product})"`), HTMX îl inserează în DOM.
-5. **Hot din 2023:** Thoughtworks Tech Radar "Adopt" (Oct 2024); folosit la GitHub Issues (parțial), Basecamp / Hotwire ecosystem.
+5. **Hot din 2023:** Thoughtworks Tech Radar "Trial" (Vol 30 Apr 2024 & Vol 31 Oct 2024); ecosistemul Hotwire (Basecamp / 37signals) merge pe filosofie identică.
 
 **Alternative excluse:**
 
@@ -188,7 +188,7 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 | **jQuery + AJAX clasic** | Familiar, prevalent în legacy. | **2010 vibes** la interviu. Sintaxa imperativă (manipulare DOM manuală), bundle mare (~85KB), nu mai e considered modern. |
 | **Server-side full refresh only** | Simplu, fără JS. | **UX rău:** delete → page reload → flash de încărcare → context pierdut (scroll, focus). Pentru "modern, impresionant", nu trece bara. |
 
-**Interview defense:** *"HTMX e pariul pe filosofia HOWL (Hypertext on Whatever Language) — server-side rendering modern. La un proiect Spring Boot + Thymeleaf, HTMX e mariajul natural: controller-ul returnează HTML fragment, HTMX face swap. Am evitat React/Vue pentru că ar fi dublat scope-ul de învățare fără a aduce valoare la cerințele acestei probe. Pentru un app cu state client complex (drag-drop, animations, offline), aș folosi React."*
+**Interview defense:** *"HTMX e pariul pe filosofia HOWL (Hypermedia On Whatever you'd Like) — server-side rendering modern, în spiritul REST original al lui Roy Fielding (HATEOAS). La un proiect Spring Boot + Thymeleaf, HTMX e mariajul natural: controller-ul returnează HTML fragment, HTMX face swap. Am evitat React/Vue pentru că ar fi dublat scope-ul de învățare fără a aduce valoare la cerințele acestei probe. Pentru un app cu state client complex (drag-drop, animations, offline), aș folosi React."*
 
 ---
 
@@ -339,7 +339,7 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 
 | Alternativă | Pro | Contra care domină |
 |---|---|---|
-| **H2 in-memory** | Zero startup time (<1s); zero dependențe externe; rulează în CI fără Docker. | **Dialect 95% Postgres-compatible, 5% diferă.** Funcții Postgres-specifice (`array_agg`, `ILIKE`, `jsonb`) nu există sau merg diferit. **Risk concret:** test trece pe H2, fails on production Postgres. La proiecte mature, evitarea acestui anti-pattern e standard. **Acceptabil pentru `test` profile dezvoltare locală rapid (`mvn test -Dspring.profiles.active=test-h2`), nu pentru CI gate.** |
+| **H2 in-memory** | Zero startup time (<1s); zero dependențe externe; rulează în CI fără Docker; are `MODE=PostgreSQL` flag care îmbunătățește compatibilitatea. | **Divergențe concrete:** `jsonb`, `ILIKE`, funcții `array_agg`, edge cases la window functions. Funcții Postgres-specifice nu există sau merg diferit. **Risk concret:** test trece pe H2, fails on production Postgres. La proiecte mature, evitarea acestui anti-pattern e standard. **Acceptabil pentru `test` profile dezvoltare locală rapid (`mvn test -Dspring.profiles.active=test-h2`), nu pentru CI gate.** |
 | **HSQLDB / Derby** | Same as H2. | Same problems as H2, plus comunități mai mici. |
 | **Postgres local instalat** | Real engine. | **Nu reproductibil în CI** (necesită setup separat). **Conflict cu Postgres din Docker** dev (port 5432). |
 | **Postgres Docker rulat manual** | Real engine, predictabil. | **Coordinație manuală** — developer trebuie să-l pornească înainte de teste. Testcontainers automatizează asta. |
@@ -569,7 +569,11 @@ V5__create_scrape_run_table.sql
    - Pentru fiecare produs cu `currency` ≠ `RON` și rate disponibil:
      `price_ron = price * rate / multiplier`, rotunjit la 2 zecimale, `HALF_UP`.
 
-**Particularitate BNR:** XML `<Rate currency="JPY" multiplier="100">` — atenție la multiplier (validat în test).
+**Particularitate BNR:** XML `<Rate currency="JPY" multiplier="100">2.85</Rate>` — atenție la multiplier (validat în test).
+
+**Exemplu numeric (JPY):** dacă produs are `price = 100 JPY` și BNR publică `rate=2.85 multiplier=100` → `price_ron = 100 × 2.85 / 100 = 2.85 RON` (NU `100 × 2.85 = 285 RON`, eroare clasică).
+
+**Exemplu numeric (USD):** `price = 9.99 USD`, `rate=4.5234 multiplier=1` → `price_ron = 9.99 × 4.5234 / 1 = 45.19 RON`.
 
 ---
 
@@ -708,8 +712,9 @@ services:
       db: { condition: service_healthy }
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      # Default credentials match the publicly documented web-scraping.dev login
-      # (Verifică la implementare — site-ul oferă demo creds vizibile)
+      # web-scraping.dev este un sandbox public; credențialele sunt afișate vizibil
+      # pe pagina /login a site-ului. Default-ele de mai jos vor fi confirmate la
+      # primul test de login din task-ul 3 al implementării (vezi Implementation Order).
       SCRAPER_USERNAME: ${SCRAPER_USERNAME:-user123}
       SCRAPER_PASSWORD: ${SCRAPER_PASSWORD:-password}
 
