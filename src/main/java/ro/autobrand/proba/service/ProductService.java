@@ -7,7 +7,10 @@ import org.springframework.transaction.annotation.Transactional;
 import ro.autobrand.proba.dto.ScrapedProductDto;
 import ro.autobrand.proba.model.Product;
 import ro.autobrand.proba.repository.ProductRepository;
+import org.springframework.data.jpa.domain.Specification;
+import ro.autobrand.proba.specification.ProductSpecifications;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -67,5 +70,18 @@ public class ProductService {
 
     public record UpsertResult(int inserted, int updated, int preserved) {
         public int total() { return inserted + updated + preserved; }
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Product> search(
+            String name, String currency, BigDecimal minPrice, BigDecimal maxPrice,
+            org.springframework.data.domain.Pageable pageable) {
+        Specification<Product> spec = Specification.allOf(
+                ProductSpecifications.nameLike(name),
+                ProductSpecifications.currencyEquals(currency),
+                ProductSpecifications.priceMin(minPrice),
+                ProductSpecifications.priceMax(maxPrice)
+        );
+        return repository.findAll(spec, pageable);
     }
 }

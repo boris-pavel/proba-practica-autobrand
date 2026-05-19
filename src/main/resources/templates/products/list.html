@@ -4,8 +4,54 @@
 <body>
 <th:block th:replace="~{fragments/layout :: layout('Products', ~{::main-content})}">
     <th:block th:fragment="main-content">
-        <h1 class="text-2xl font-bold mb-4">Products</h1>
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">Products</h1>
+            <span class="text-sm opacity-70" th:text="${'Total: ' + page.totalElements}"></span>
+        </div>
 
+        <!-- Filter bar -->
+        <form hx-get="/products"
+              hx-target="#products-tbody"
+              hx-trigger="change from:input, change from:select, submit"
+              hx-swap="outerHTML"
+              class="card bg-base-100 shadow p-4 mb-4">
+            <div class="flex flex-wrap gap-2 items-end">
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Search name</span></label>
+                    <input type="text" name="search" th:value="${search}" placeholder="Apple..."
+                           class="input input-bordered input-sm w-48"/>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Currency</span></label>
+                    <input type="text" name="currency" th:value="${currency}" placeholder="USD"
+                           maxlength="3" class="input input-bordered input-sm w-24 uppercase"/>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Min price</span></label>
+                    <input type="number" step="0.01" name="minPrice" th:value="${minPrice}"
+                           class="input input-bordered input-sm w-24"/>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Max price</span></label>
+                    <input type="number" step="0.01" name="maxPrice" th:value="${maxPrice}"
+                           class="input input-bordered input-sm w-24"/>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1"><span class="label-text text-xs">Sort</span></label>
+                    <select name="sort" class="select select-bordered select-sm">
+                        <option value="name,asc">Name ↑</option>
+                        <option value="name,desc">Name ↓</option>
+                        <option value="price,asc">Price ↑</option>
+                        <option value="price,desc">Price ↓</option>
+                        <option value="lastScraped,desc">Last scraped ↓</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                <a th:href="@{/products}" class="btn btn-ghost btn-sm">Clear</a>
+            </div>
+        </form>
+
+        <!-- Products table -->
         <div class="overflow-x-auto bg-base-100 rounded-lg shadow">
             <table class="table table-zebra">
                 <thead>
@@ -19,7 +65,7 @@
                     <th>Actions</th>
                 </tr>
                 </thead>
-                <tbody>
+                <tbody th:fragment="products-tbody" id="products-tbody">
                 <tr th:each="p : ${page.content}">
                     <td><img th:if="${p.imageUrl}" th:src="${p.imageUrl}" class="w-12 h-12 object-cover rounded"/></td>
                     <td th:text="${p.name}"></td>
@@ -35,7 +81,7 @@
                 </tr>
                 <tr th:if="${page.empty}">
                     <td colspan="7" class="text-center opacity-50 py-8">
-                        No products yet. Click "Run Scrape Now" în sidebar.
+                        No products. Click "Run Scrape Now" or adjust filters.
                     </td>
                 </tr>
                 </tbody>

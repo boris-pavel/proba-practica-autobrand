@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,6 +16,8 @@ import ro.autobrand.proba.dto.ProductDto;
 import ro.autobrand.proba.exception.ProductNotFoundException;
 import ro.autobrand.proba.model.Product;
 import ro.autobrand.proba.repository.ProductRepository;
+import ro.autobrand.proba.service.ProductService;
+
 
 @Controller
 @RequestMapping("/products")
@@ -21,15 +25,27 @@ import ro.autobrand.proba.repository.ProductRepository;
 public class ProductController {
 
     private final ProductRepository repository;
+    private final ProductService productService;
 
     @GetMapping
     public String list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String currency,
+            @RequestParam(required = false) java.math.BigDecimal minPrice,
+            @RequestParam(required = false) java.math.BigDecimal maxPrice,
             @PageableDefault(size = 20, sort = "name") Pageable pageable,
-            Model model
+            Model model,
+            @RequestHeader(value = "HX-Request", required = false) String htmxHeader
     ) {
-        Page<Product> page = repository.findAll(pageable);
+        Page<Product> page = productService.search(search, currency, minPrice, maxPrice, pageable);
         model.addAttribute("page", page);
-        return "products/list";
+        model.addAttribute("search", search);
+        model.addAttribute("currency", currency);
+        model.addAttribute("minPrice", minPrice);
+        model.addAttribute("maxPrice", maxPrice);
+
+        // Dacă request-ul vine de la HTMX (header HX-Request), returnăm doar fragment-ul tbody
+        return htmxHeader != null ? "products/list :: products-tbody" : "products/list";
     }
 
     @GetMapping("/{id}/edit")
