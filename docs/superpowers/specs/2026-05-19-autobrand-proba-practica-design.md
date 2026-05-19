@@ -27,7 +27,7 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 |---|---|---|
 | Limbă | **Java 21 LTS** (Eclipse Temurin) | LTS curent. JD-ul cere Java. |
 | Framework | **Spring Boot 3.3** | Standard industry pentru Java web; auto-config; ecosistem matur. |
-| Build | **Maven** | Mai accesibil pentru beginner decât Gradle Kotlin DSL; `pom.xml` standard. |
+| Build | **Maven** | Vezi justificare detaliată mai jos. |
 | Persistență | **Spring Data JPA + Hibernate** | Repository pattern out-of-the-box; reduce boilerplate CRUD. |
 | DB runtime | **PostgreSQL 16** (Docker) | DB serios de producție; cunoscut în industrie. |
 | DB test | **Testcontainers Postgres** | Teste pe același engine ca producția (vs. H2 care divergează). |
@@ -36,6 +36,36 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 | Frontend CSS | **Tailwind CSS (Play CDN)** + **DaisyUI** | Look modern fără build pipeline; componente DaisyUI gata. |
 | Interactivitate | **HTMX** | SPA-feel fără JS framework; trendy în comunitatea Spring (Thoughtworks Radar 2024). |
 | Charting | **Chart.js (CDN)** | Un singur donut chart pe dashboard. |
+
+### Justificare detaliată: Build tool — Maven vs. alternative
+
+**De ce Maven:**
+
+1. **Accesibilitate pentru beginner Java.** `pom.xml` este XML pur — verbos, dar liniar și predictibil. Pentru cineva care învață Java + Spring Boot simultan, nu vrei să adaugi încă un limbaj (Groovy sau Kotlin DSL) doar pentru build script. Un developer junior poate citi un `pom.xml` și înțelege ce face în primele 10 minute, fără să cunoască sintaxa.
+
+2. **Defaults Spring Initializr și ecosistem.** `start.spring.io` generează Maven implicit. ~70% din tutorialele și răspunsurile Stack Overflow pentru Spring Boot folosesc Maven. Asta înseamnă mai puțin "translate from Gradle" în timp de debugging.
+
+3. **Convention over configuration.** Layout standard (`src/main/java`, `src/test/java`), goal-uri predictibile (`mvn clean install`, `mvn test`, `mvn spring-boot:run`). Zero gândire la "ce-i config-ul de build pentru proiectul ăsta?".
+
+4. **Toleranță IDE matură.** IntelliJ IDEA suport native Maven de ani, fără plugin-uri externe.
+
+5. **Context Autobrand.** JD-ul cere Java; companiile auto românești sunt majoritar pe stack Maven (din observații industrie). Maven nu va fi nicicând o "alegere ciudată" la interviu.
+
+**Alternative excluse — de ce nu le folosim:**
+
+| Alternativă | Pro | Contra care domină pentru cazul ăsta |
+|---|---|---|
+| **Gradle (Groovy DSL)** | ~30% mai concis decât Maven; build incremental rapid; flexibilitate cu plugin-uri custom. | **Groovy e dinamic și magic:** `compile 'org.foo:bar:1.0'` arată ca o metodă, dar e închidere DSL. Pentru beginner, debug-ul e dureros — erorile sunt criptice. **SO answer rot:** multe răspunsuri online folosesc Gradle 4-6 (diferit de 8.x curent). **Câștigul de incremental build = 0** pentru un proiect de ~20 dependențe și 1 modul. La interviu, "Why Gradle?" cere apărarea: ai cunoaște intern doar pentru bonus, nu necesar. |
+| **Gradle Kotlin DSL (`build.gradle.kts`)** | Type-safe; autocomplete în IDE; modern, "the future of Gradle"; Android dev standard. | **Stack double:** vrei să înveți Spring + Java + JPA + Hibernate + Spring Security + Thymeleaf, iar acum și Kotlin? Pentru un beginner, e overload. **Doc fragmentate:** Gradle docs au exemple atât Groovy cât și Kotlin, ușor confuz. **Risc explicabilitate:** la interviu, "De ce Kotlin DSL pentru un proiect Java?" cere răspuns nuanțat — beginner riscă "așa am văzut online". |
+| **Bazel (Google)** | Foarte rapid, polyglot, hermetic builds, folosit la Google/Uber/Stripe. | **Overkill brutal** pentru single-module Java app. Curve de învățare foarte abruptă (`BUILD` files, `WORKSPACE`, target labels). **Zero integrare Spring Boot** out-of-the-box; ai construi manual rules. **Comunitate redusă** pentru Java standalone — majoritar Go/C++/Kotlin Android. La interviu, "Bazel pentru o probă?" sună a CV-padding. |
+| **Apache Ant** | Există de 25 ani, multă documentație istorică. | **Considerat deprecated** în Java modern. Fără central repo pentru dependențe (trebuie download manual). Nu e suportat de Spring Initializr. Folosit doar în proiecte legacy mai vechi de ~2010. La interviu, "Ant?" sună a "n-am cercetat alternativele". |
+| **sbt** (Simple Build Tool) | Standard pentru Scala. | **Nu e pentru Java pur.** Sintaxa și conceptele (settings vs tasks, lazy evaluation) sunt specifice Scala. Irelevant aici. |
+| **Make / shell scripts** | Familiar, zero dependențe. | **Nu gestionează dependențe Java** (download din Maven Central, transitive deps, versiuni conflicte). Reinventezi roata, prost. **Zero suport Spring Boot plugin.** |
+| **No build tool / `javac` manual** | Conceptual minimal. | Imposibil pentru un proiect cu 20+ dependențe Spring tranzitive — ai gestiona manual ~100 JAR-uri. |
+
+**Concluzie:** Maven câștigă pe **simplicitate + ecosistem + risk explicabilitate la interviu**, nu pe features. La interviu, dacă te întreabă "De ce nu Gradle?", răspuns ferm: *"Pentru un proiect de o săptămână, beneficiile Gradle (concisitate, incremental builds) nu compensează cost-ul cognitiv de a învăța Groovy/Kotlin DSL în paralel cu Spring. Dacă mâine aș lucra pe un monorepo cu 50 module, aș reconsidera Gradle."*
+
+---
 
 ### Specialized
 | Componentă | Alegere | Justificare |
