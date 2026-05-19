@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: proba
+  profiles:
+    active: dev
+  thymeleaf:
+    cache: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+logging:
+  level:
+    ro.autobrand.proba: DEBUG
+    org.springframework: INFO
+    org.hibernate.SQL: WARN
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true

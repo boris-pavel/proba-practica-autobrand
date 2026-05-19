@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: autobrand-db
+    environment:
+      POSTGRES_DB: autobrand
+      POSTGRES_USER: autobrand
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "55432:5432"      # ← schimbat de la 5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "autobrand"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  db_data:
