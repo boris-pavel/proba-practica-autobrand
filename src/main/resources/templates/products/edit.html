@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org">
+<head><title>Edit</title></head>
+<body>
+<th:block th:replace="~{fragments/layout :: layout('Edit Product', ~{::main-content})}">
+    <th:block th:fragment="main-content">
+        <h1 class="text-2xl font-bold mb-4">Edit Product #<span th:text="${product.id}"></span></h1>
+
+        <form th:action="@{/products/{id}(id=${product.id})}" method="post" th:object="${productDto}"
+              class="card bg-base-100 shadow p-6 max-w-2xl space-y-4">
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Name *</span></label>
+                <input type="text" th:field="*{name}" class="input input-bordered" required/>
+                <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="text-error text-sm"></span>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Description</span></label>
+                <textarea th:field="*{description}" class="textarea textarea-bordered" rows="4"></textarea>
+                <span th:if="${#fields.hasErrors('description')}" th:errors="*{description}" class="text-error text-sm"></span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Price *</span></label>
+                    <input type="number" step="0.01" th:field="*{price}" class="input input-bordered" required/>
+                    <span th:if="${#fields.hasErrors('price')}" th:errors="*{price}" class="text-error text-sm"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Currency *</span></label>
+                    <input type="text" th:field="*{currency}" maxlength="3" class="input input-bordered uppercase" required/>
+                    <span th:if="${#fields.hasErrors('currency')}" th:errors="*{currency}" class="text-error text-sm"></span>
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Image URL</span></label>
+                <input type="url" th:field="*{imageUrl}" class="input input-bordered"/>
+                <img th:if="${productDto.imageUrl}" th:src="${productDto.imageUrl}"
+                     class="w-32 h-32 object-cover rounded mt-2"/>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text">Source URL</span></label>
+                <input type="url" th:field="*{sourceUrl}" class="input input-bordered"/>
+            </div>
+
+            <div class="text-sm opacity-70 border-t pt-4">
+                <div>Last scraped: <span th:text="${product.lastScraped}"></span></div>
+                <div>First seen: <span th:text="${product.firstSeen}"></span></div>
+                <div>Manually edited: <span th:text="${product.manuallyEdited}"></span></div>
+            </div>
+
+            <div class="flex gap-2 justify-end">
+                <a th:href="@{/products}" class="btn btn-ghost">Cancel</a>
+                <button th:if="${product.manuallyEdited}" type="submit"
+                        th:formaction="@{/products/{id}/reset(id=${product.id})}"
+                        class="btn btn-warning">Reset to scraped</button>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </form>
+
+        <form th:action="@{/products/{id}/delete(id=${product.id})}" method="post"
+              class="mt-4 max-w-2xl"
+              onsubmit="return confirm('Sigur ștergi produsul?');">
+            <button type="submit" class="btn btn-error btn-outline">🗑 Delete product</button>
+        </form>
+    </th:block>
+</th:block>
+</body>
+</html>
