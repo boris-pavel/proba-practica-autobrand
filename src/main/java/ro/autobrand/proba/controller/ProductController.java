@@ -17,6 +17,7 @@ import ro.autobrand.proba.exception.ProductNotFoundException;
 import ro.autobrand.proba.model.Product;
 import ro.autobrand.proba.repository.ProductRepository;
 import ro.autobrand.proba.service.ProductService;
+import ro.autobrand.proba.service.ExchangeRateService;
 
 
 @Controller
@@ -26,6 +27,7 @@ public class ProductController {
 
     private final ProductRepository repository;
     private final ProductService productService;
+    private final ExchangeRateService exchangeRateService;
 
     @GetMapping
     public String list(
@@ -67,10 +69,11 @@ public class ProductController {
                 new ProductNotFoundException("Product not found: " + id));
         if (bindingResult.hasErrors()) {
             model.addAttribute("product", p);
-            return "products/edit";   // re-randerează form cu erori
+            return "products/edit";
         }
         dto.applyTo(p);
         repository.save(p);
+        exchangeRateService.recomputeRonFor(p);     // ← NOU: recalculează RON după edit
         ra.addFlashAttribute("success", "Produs actualizat");
         return "redirect:/products";
     }

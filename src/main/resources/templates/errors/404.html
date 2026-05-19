@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org">
+<head><title>Not Found</title></head>
+<body>
+<th:block th:replace="~{fragments/layout :: layout('404', ~{::main-content})}">
+    <th:block th:fragment="main-content">
+        <div class="hero min-h-[50vh]">
+            <div class="hero-content text-center">
+                <div>
+                    <h1 class="text-6xl font-bold">404</h1>
+                    <p class="py-4" th:text="${message}">Resursa nu a fost găsită</p>
+                    <a th:href="@{/}" class="btn btn-primary">Înapoi acasă</a>
+                </div>
+            </div>
+        </div>
+    </th:block>
+</th:block>
+</body>
+</html>

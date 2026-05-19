@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 import ro.autobrand.proba.model.ExchangeRate;
 import ro.autobrand.proba.repository.ExchangeRateRepository;
 import ro.autobrand.proba.repository.ProductRepository;
+import ro.autobrand.proba.model.Product;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -96,5 +97,23 @@ public class ExchangeRateService {
             }
         }
         log.info("Recomputed RON price for {} products", updated);
+    }
+
+    @Transactional
+    public void recomputeRonFor(Product product) {
+        if ("RON".equalsIgnoreCase(product.getCurrency())) {
+            product.setPriceRon(product.getPrice());
+            productRepo.save(product);
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        rateRepo.findByRateDateAndCurrency(today, product.getCurrency())
+                .ifPresent(r -> {
+                    BigDecimal ron = product.getPrice()
+                            .multiply(r.getRateToRon())
+                            .divide(BigDecimal.valueOf(r.getMultiplier()), 2, RoundingMode.HALF_UP);
+                    product.setPriceRon(ron);
+                    productRepo.save(product);
+                });
     }
 }
