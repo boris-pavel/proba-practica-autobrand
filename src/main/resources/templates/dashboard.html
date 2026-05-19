@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org">
+<head><title>Dashboard</title></head>
+<body>
+<th:block th:replace="~{fragments/layout :: layout('Dashboard', ~{::main-content})}">
+    <th:block th:fragment="main-content">
+        <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+
+        <!-- Stats cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <div class="text-3xl font-bold" th:text="${totalProducts}">0</div>
+                    <div class="opacity-70">Total Products</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <div class="text-3xl font-bold" th:text="${manuallyEditedCount}">0</div>
+                    <div class="opacity-70">Manually Edited</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <div class="text-lg font-bold"
+                         th:text="${lastSuccessAt != null ? #temporals.format(lastSuccessAt, 'dd MMM HH:mm') : 'Never'}">Never</div>
+                    <div class="opacity-70">Last Scrape</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <div class="text-3xl font-bold" th:text="${usdRate != null ? usdRate + ' RON' : '-'}">-</div>
+                    <div class="opacity-70">USD → RON</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart + Recent activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <h2 class="card-title">Currency Distribution</h2>
+                    <canvas id="currencyChart" class="max-h-64"></canvas>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <h2 class="card-title">Recent Scrape Runs</h2>
+                    <table class="table table-sm">
+                        <thead><tr><th>Started</th><th>Status</th><th>Products</th></tr></thead>
+                        <tbody>
+                        <tr th:each="r : ${recentRuns}">
+                            <td th:text="${#temporals.format(r.startedAt, 'dd MMM HH:mm')}"></td>
+                            <td>
+                                <span th:if="${r.status == 'SUCCESS'}" class="badge badge-success">✓ SUCCESS</span>
+                                <span th:if="${r.status == 'FAILED'}" class="badge badge-error">✗ FAILED</span>
+                                <span th:if="${r.status == 'RUNNING'}" class="badge badge-info">⏳ RUNNING</span>
+                            </td>
+                            <td th:text="${r.productsTotal != null ? r.productsTotal + ' (' + r.productsNew + ' new)' : '-'}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(recentRuns)}">
+                            <td colspan="3" class="text-center opacity-50">Niciun scrape încă</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            /*<![CDATA[*/
+            const data = /*[[${currencyStats}]]*/ {};
+            new Chart(document.getElementById('currencyChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+            /*]]>*/
+        </script>
+    </th:block>
+</th:block>
+</body>
+</html>
