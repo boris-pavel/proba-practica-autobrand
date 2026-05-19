@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org">
+<head><title>Upload Invoice</title></head>
+<body>
+<th:block th:replace="~{fragments/layout :: layout('Upload Invoice', ~{::main-content})}">
+    <th:block th:fragment="main-content">
+        <h1 class="text-2xl font-bold mb-4">Upload Invoice (PDF)</h1>
+
+        <form th:action="@{/invoice/upload}" method="post" enctype="multipart/form-data"
+              class="card bg-base-100 shadow p-6 max-w-2xl space-y-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">PDF File (max 5MB)</span></label>
+                <input type="file" name="file" accept="application/pdf" required
+                       class="file-input file-input-bordered"/>
+            </div>
+            <button type="submit" class="btn btn-primary">Process & Download CSV</button>
+        </form>
+
+        <div class="mt-4 text-sm opacity-70 max-w-2xl">
+            <p>Aplicația suportă format-ul facturilor <strong>AD AUTO TOTAL SRL</strong>.</p>
+            <p>După upload, CSV-ul va fi descărcat automat.</p>
+        </div>
+    </th:block>
+</th:block>
+</body>
+</html>
