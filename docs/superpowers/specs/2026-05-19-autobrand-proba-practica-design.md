@@ -211,7 +211,10 @@ V5__create_scrape_run_table.sql
 2. `WebScrapingDevScraper.login()` — Jsoup POST credențiale, capturează session cookies.
 3. `WebScrapingDevScraper.fetchProducts(cookies)` — GET pagina produse, parsare cu Jsoup → `List<ScrapedProduct>`.
 4. `ProductService.upsertAll(scraped)` — `@Transactional`. Pentru fiecare produs:
-   - `findByName` → INSERT (nou) sau UPDATE (existent, doar dacă `manually_edited = false`).
+   - `findByName(scraped.name)`:
+     - **Nu există** → INSERT cu `first_seen = now()`, `last_scraped = now()`.
+     - **Există, `manually_edited = false`** → UPDATE `price`, `description`, `image_url`, `source_url`, `currency`, `last_scraped = now()`, `updated_at = now()`.
+     - **Există, `manually_edited = true`** → UPDATE **doar** `last_scraped = now()` (păstrează modificările manuale, dar marchează că produsul mai există la sursă).
 5. (Bonus) `ExchangeRateService.ensureTodayRates()` → fetch BNR dacă nu există rate pentru ziua curentă → recompute `price_ron`.
 6. `ScrapeRun` updated cu status `SUCCESS` + counts.
 7. La orice exception: status `FAILED` + `error_message`, log stack trace.
@@ -241,6 +244,12 @@ V5__create_scrape_run_table.sql
 
 **Notă:** **Nu** persistăm invoice-uri în DB. Procesare in-memory, request-response, simplu.
 
+**Handling pentru PDF cu layout necunoscut:**
+- Parser-ul este specific formatului `AD AUTO TOTAL` (factură furnizată ca sample).
+- Dacă parser-ul rulează dar **nu extrage nicio linie** (regex-urile nu match-uiesc nimic) → return un CSV gol cu doar header-ul + flash warning user-ului: *"PDF procesat, dar nu am putut extrage linii de factură. Verifică dacă fișierul are formatul așteptat (factură AD AUTO TOTAL)."*
+- Dacă PDFBox aruncă exception (PDF corupt / cifrat / parolat) → flash error + redirect.
+- La interviu: *"Am ales să nu eșuez la PDF cu layout necunoscut — dau user-ului feedback clar și CSV gol. Defensive, dar observabil."*
+
 ### 5.3 Exchange Rate Flow (bonus #1)
 
 **Trigger:**
@@ -252,7 +261,7 @@ V5__create_scrape_run_table.sql
    - Check DB: există rate pentru `today`? Da → skip.
    - Nu → GET `https://www.bnr.ro/nbrfxrates.xml` cu `RestClient`.
    - Parse XML cu Jackson XML.
-   - INSERT rate-uri pentru USD, EUR, GBP, etc.
+   - INSERT rate-uri pentru un set fixat de monede: **USD, EUR, GBP, CHF, JPY** (suficient pentru web-scraping.dev care folosește USD; restul, defensive). Alte monede din XML sunt ignorate.
 2. `ProductService.recomputeRon()`:
    - Pentru fiecare produs cu `currency` ≠ `RON` și rate disponibil:
      `price_ron = price * rate / multiplier`, rotunjit la 2 zecimale, `HALF_UP`.
@@ -284,7 +293,7 @@ V5__create_scrape_run_table.sql
 | `/products/{id}/edit` | GET | Form editare |
 | `/products/{id}` | POST | Update |
 | `/products/{id}/delete` | POST (HTMX) | Delete |
-| `/products/{id}/reset` | POST | Reset `manually_edited` |
+| `/products/{id}/reset` | POST | Set `manually_edited = false` (la următorul cron run, produsul va fi rescris cu datele scraped) |
 | `/invoice` | GET | Formular upload |
 | `/invoice/upload` | POST | Procesare + download CSV |
 | `/admin/scrape` | POST | Trigger manual scrape (pentru demo) |
@@ -318,7 +327,7 @@ HTMX swap: schimbarea oricărui filter face GET `/products` cu params noi, swap 
 ### Form editare
 Toate câmpurile editabile (`name`, `description`, `price`, `currency`, `image_url`, `source_url`). Validare Bean Validation. La save → `manually_edited = true` automatic.
 
-Buton "Reset to scraped" → `manually_edited = false` + re-scrape produsul respectiv.
+Buton "Reset to scraped" → setează `manually_edited = false`. **Nu** declanșează re-scrape direct (overhead inutil); la următorul cron run (sau la trigger manual din admin), produsul va fi rescris cu datele scraped curente.
 
 ---
 
@@ -396,8 +405,10 @@ services:
       db: { condition: service_healthy }
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SCRAPER_USERNAME: ${SCRAPER_USERNAME:-user}
-      SCRAPER_PASSWORD: ${SCRAPER_PASSWORD:-12345}
+      # Default credentials match the publicly documented web-scraping.dev login
+      # (Verifică la implementare — site-ul oferă demo creds vizibile)
+      SCRAPER_USERNAME: ${SCRAPER_USERNAME:-user123}
+      SCRAPER_PASSWORD: ${SCRAPER_PASSWORD:-password}
 
 volumes:
   db_data:
