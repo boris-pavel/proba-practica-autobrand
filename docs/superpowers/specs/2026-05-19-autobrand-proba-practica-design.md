@@ -68,19 +68,292 @@ Deadline: finalul săptămânii (2026-05-24 informativ). Submission: email la `h
 ---
 
 ### Specialized
-| Componentă | Alegere | Justificare |
+| Componentă | Alegere | Detalii |
 |---|---|---|
-| Web scraping | **Jsoup 1.17** (primary) | Cel mai simplu; suportă form login + cookies; rapid; zero binaries. Fallback Selenium dacă pagina e JS-rendered. |
-| PDF parsing | **Apache PDFBox 3.x** | De-facto Java standard; Apache 2.0 license (iText e AGPL/comercial). |
-| CSV export | **Apache Commons CSV** | Mic, focused, ușor de explicat. |
-| HTTP client (BNR) | **Spring `RestClient`** (Java 21) | Modern (înlocuiește RestTemplate); fluent API. |
-| XML parsing (BNR) | **Jackson Dataformat XML** | Riguros, integrat în ecosistem Jackson. |
-| Cron scheduler | **Spring `@Scheduled`** | Built-in; zero dependencies. |
-| Auth | **Spring Security + BCrypt** | Industry standard; form login + session. |
-| Validation | **Bean Validation (Hibernate Validator)** | Annotations declarative pe DTOs. |
-| Reducere boilerplate | **Lombok** | `@Data`, `@Builder`, `@Slf4j` pe entități/DTOs. |
-| Testing | **JUnit 5 + Mockito + MockMvc + Testcontainers** | Standard Spring testing stack. |
-| Logging | **SLF4J + Logback** | Default Spring Boot. |
+| Web scraping | **Jsoup 1.17** (primary) + Selenium fallback | Vezi 2.1 |
+| PDF parsing | **Apache PDFBox 3.x** | Vezi 2.2 |
+| Frontend templating | **Thymeleaf 3.x** | Vezi 2.3 |
+| Frontend interactivitate | **HTMX 2.x** | Vezi 2.4 |
+| CSS framework | **Tailwind CSS (Play CDN) + DaisyUI** | Vezi 2.5 |
+| Database runtime | **PostgreSQL 16** | Vezi 2.6 |
+| ORM | **Spring Data JPA + Hibernate** | Vezi 2.7 |
+| Migrări | **Flyway 10.x** | Vezi 2.8 |
+| Auth | **Spring Security + BCrypt** | Vezi 2.9 |
+| Test DB strategy | **Testcontainers Postgres** | Vezi 2.10 |
+| CSV export | **Apache Commons CSV 1.11** | Standard Apache; tested, simplu API. Alternativa OpenCSV are licență mai restrictivă (LGPL în versiuni vechi). |
+| HTTP client (BNR) | **Spring `RestClient`** (Java 17+) | Modern, fluent, înlocuiește `RestTemplate` (în maintenance) și e mai simplu decât `WebClient` (care e reactiv, overkill aici). |
+| XML parsing (BNR) | **Jackson Dataformat XML** | Deja în clasa de dependențe Spring; annotation-driven. Alternativa JAXB e mai verbose, depreciated din Java 11 (mutat la EE). |
+| Cron scheduler | **Spring `@Scheduled`** | Built-in, zero dependencies. **Quartz exclus**: state persistent în DB, clustering, complex API — toate inutile pentru un cron simplu cu fereastră fixă 12–18. |
+| Validation | **Bean Validation (Hibernate Validator)** | JSR 380 standard; declarative; Spring integrare nativă. Singura alternativă realistă (custom validators) duplică efort. |
+| Reducere boilerplate | **Lombok** | `@Data`, `@Builder`, `@Slf4j` taie sute de linii de getters/setters. Alternative: records Java 21 (parțial, dar entități JPA nu pot fi records din cauza proxy-urilor Hibernate). |
+| Logging | **SLF4J + Logback** | Default Spring Boot. Alternative (Log4j2) ar fi necesar `exclusions` în pom; câștig minim. |
+
+---
+
+### 2.1 Justificare detaliată: Web scraping — Jsoup vs. alternative
+
+**De ce Jsoup primary:**
+1. **Cel mai simplu API Java pentru HTML parsing.** Selector CSS familiar: `doc.select("div.product-card")` — exact ca jQuery / DOM browser. Curve de învățare ~30 minute.
+2. **Suport built-in pentru form login.** `Jsoup.connect(url).data("username","x").method(POST).execute()` returnează `Response` cu cookies pe care le pasezi mai departe. Zero ceremonie.
+3. **Zero binaries externe.** Un singur JAR (~430KB). Nu trebuie ChromeDriver, GeckoDriver, Node, Playwright runtime.
+4. **Rapid.** ~50-100ms per pagină (vs. 2-5 secunde Selenium). Pentru un cron care rulează 7x/zi, asta contează la log volume și CI time.
+5. **Output predictibil.** Parse error → exception clară. Nu te pune în situație de "timeout, dar nu știu de ce".
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **Selenium WebDriver** | Suportă JS-rendered content (SPA, React, etc.). Mature, foarte documentat. | **Necesită ChromeDriver binary** managed manual sau cu WebDriverManager. **Slow** — pornește browser real, ~2-5s per pagină. **Flaky** — pagini cu animații / async pot eșua intermittent. Pentru web-scraping.dev (sandbox simplu), pune complexitate fără câștig. **Fallback documentat:** dacă login-ul cere JS, putem switch la Selenium fără refactor major (interface `Scraper` permite). |
+| **Playwright Java** | Mai modern decât Selenium (auto-wait built-in, network interception, multi-browser cu același API). | **API Java mai puțin maturat** decât JS/Python (Java port e port secundar). **Comunitate mai mică** pentru Java specific. **Aceeași încărcătură ca Selenium** (browser process). Nu îmi dă nimic peste Selenium ca fallback. |
+| **HtmlUnit** | Browser headless Java pure (fără ChromeDriver). | **Execută JS limitat** (motor Rhino vechi). **Lent.** Compromisul nefericit între Jsoup și Selenium — fără punctele forte ale niciuneia. |
+| **HTTP client raw (RestClient/HttpClient) + regex** | Zero dependențe, maximally minimal. | **HTML parsing cu regex e anti-pattern** (vezi celebrul SO answer 1732454). HTML are nesting, atribute, escapes — regex prinde 80% și se rupe la cazuri reale. |
+| **Curl + bash + jq** | Lightweight, familiar la sysadmins. | **Nu există în context Java/Spring;** ar trebui invocat din ProcessBuilder. Cross-platform nightmare (Windows vs Linux). |
+
+**Risk acknowledged și mitigation:** dacă la primul test găsesc că `web-scraping.dev/login` necesită JS pentru login (anumite versiuni au CSRF tokens injectate via JS), switch la Selenium prin schimbarea unui singur bean `Scraper`. Interface-ul rămâne identic.
+
+**Interview defense:** *"Am ales Jsoup pentru pagini HTML server-rendered, ceea ce e cazul web-scraping.dev. Selenium e prea greu pentru un cron — un crawler real-world cu Selenium ar trebui să gestioneze pool de browsere, restart-uri, memory leaks. Pentru un sandbox cu format previzibil, Jsoup câștigă pe simplicity, speed și debuggability. Dacă target-ul ar fi fost o aplicație SPA Real-World™ (Amazon, eBay), Selenium ar fi fost alegerea evidentă."*
+
+---
+
+### 2.2 Justificare detaliată: PDF parsing — Apache PDFBox vs. alternative
+
+**De ce Apache PDFBox 3.x:**
+1. **Apache 2.0 license** — folosit liber în orice context, inclusiv comercial. Critic pentru un proiect care merge într-o companie.
+2. **De-facto standard Java pentru PDF text extraction.** Suportă PDF 1.0 → 2.0; PDFTextStripper extrage text cu poziții (X, Y) — util pentru parser cu coloane.
+3. **Maintained activ** de Apache Foundation; ultima release 3.0.2 (mid-2024).
+4. **API simplu:**
+   ```java
+   try (PDDocument doc = Loader.loadPDF(file)) {
+       String text = new PDFTextStripper().getText(doc);
+   }
+   ```
+5. **Suportă forms, signatures, annotations** — peste cerința noastră, dar arată profesionalism.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **iText 7 / 8** | API mai bogat (PDF generation, manipulare avansată), foarte folosit comercial. | **AGPL license** la varianta open-source — copyleft viral, încarcă întregul proiect cu obligația de a publica source dacă distribui binar. **Licență comercială pe iText e plătită** (mii €/an). Pentru o probă într-un proiect care va fi public pe GitHub, AGPL = legal headache. **Risk explicabilitate la interviu:** "ai folosit AGPL într-un proiect comercial?" — răspuns greu de apărat. |
+| **Apache Tika** | Wrapper peste PDFBox + alte format-uri (Word, Excel, etc.); detectare automată format. | **Overhead masiv** — Tika trage zeci de dependențe (POI pentru Office, parser-i Office, etc.). Pentru DOAR PDF, e PDFBox + 50MB de dead weight. Dacă cerința ar fi "orice tip de fișier", Tika ar fi alegerea. |
+| **PDFTron / Aspose** | API comercial, suport excelent, multiple formate, accuracy mai mare la layout-uri complexe. | **Licență comercială scumpă** (~$1000+/an). Nu folosim soluții pay-walled pentru open project. |
+| **iText 5 (LGPL)** | Versiune veche, LGPL (mai permisiv decât AGPL). | **End-of-life din 2015**, fără security patches, fără suport PDF modern (PDF 2.0). Risc serios. |
+| **Custom parser (PDFBox low-level + manual)** | Control total. | Reinventezi PDFTextStripper. Anti-pattern. |
+
+**Interview defense:** *"PDFBox a câștigat principalele pe licență — Apache 2.0 permite orice utilizare. iText 7 ar fi tehnic puternic, dar AGPL viral ar fi forțat proiectul la AGPL, ceea ce e prohibitiv pentru cod care merge într-o companie. Dacă proiectul ar fi avut licență comercială (companie cu license budget), iText 7 ar fi fost evaluat serios pentru PDF generation features."*
+
+---
+
+### 2.3 Justificare detaliată: Frontend templating — Thymeleaf vs. alternative
+
+**De ce Thymeleaf 3.x:**
+1. **Integrare nativă cu Spring Boot.** `spring-boot-starter-thymeleaf` configurează totul; `Model` din controller merge direct în template.
+2. **HTML "valid prototype"** — un fișier `.html` Thymeleaf poate fi deschis în browser fără server (atributele `th:*` sunt ignorate). Designeri pot lucra fără să ruleze Java.
+3. **Sintaxă declarativă, intuitivă:** `<span th:text="${product.name}">Placeholder</span>` — placeholder-ul rămâne în HTML static.
+4. **Fragmente reutilizabile** (`th:fragment`, `th:replace`) — like includes, dar mai puternic (parametrii).
+5. **Security integration** — `sec:authorize="hasRole('ADMIN')"` direct în template (cu starter).
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **FreeMarker** | Mai rapid la rendering (~2x); sintaxă concisă (`${name}`, `<#if>`); folosit la Yelp, Mailchimp. | **Nu e HTML valid** — `<#if>`, `<#list>` rupe HTML prototyping. Sintaxa de scapă (`?html`, `?json`) e proprie. **Spring Boot starter exists, dar comunitatea Spring favorizează Thymeleaf** (mai multe tutoriale, exemple, plugin-uri IntelliJ). Câștig de performance irelevant la scope-ul nostru. |
+| **JSP** | Legacy Java EE standard. | **Deprecated pentru Spring Boot embedded servers** (Tomcat embedded nu suportă JSP fără config special); **scripting Java în template** încurajează rău mixaj logică/view; **fără hot reload** decent. |
+| **Mustache / Handlebars Java** | Logic-less template philosophy; folosit cross-language. | **Prea limitat:** fără if-else complex, fără fragments cu parametri. Trebuie multă logică în controller, ceea ce face controller-ul gros. **Spring Boot integration există dar marginală.** |
+| **Pebble** | Inspirat din Twig (PHP), foarte concis. | **Comunitate mică în Java.** Risc de "cine altcineva îl folosește?" la interviu. **Spring Boot integration via 3rd party**, nu oficial. |
+| **Velocity** | Vechi Apache, încă funcțional. | **Project-ul a fost archived/retired în 2021** efectiv. Maintenance abandonat. |
+| **React / Vue rendered server-side** | Modern, isomorphic. | **Cere Node.js runtime** (Nashorn deprecated, GraalJS overhead). Cross-stack complexity prohibitive pentru beginner Java + 1 săptămână. |
+
+**Interview defense:** *"Thymeleaf e standardul de-facto Spring Boot. FreeMarker e tehnic competitiv, dar Thymeleaf are avantajul HTML-valid prototyping — designerul/PM-ul poate deschide fișierul direct în browser. La scale care contează (mii req/sec), aș reconsidera FreeMarker pentru câștig de throughput."*
+
+---
+
+### 2.4 Justificare detaliată: Frontend interactivitate — HTMX vs. alternative
+
+**De ce HTMX 2.x:**
+1. **Server-driven UI fără SPA framework.** Toată logica rămâne pe backend; HTMX doar swap-uiește fragmente HTML.
+2. **Atribute HTML declarative:** `<button hx-post="/products/123/delete" hx-target="#row-123" hx-swap="outerHTML">Delete</button>` — fără JS scris manual.
+3. **Bundle minim:** ~14KB minified+gzipped. Zero build pipeline.
+4. **Sinergie perfectă cu Thymeleaf** — Spring controller returnează un fragment Thymeleaf (`return "products/list :: row(${product})"`), HTMX îl inserează în DOM.
+5. **Hot din 2023:** Thoughtworks Tech Radar "Adopt" (Oct 2024); folosit la GitHub Issues (parțial), Basecamp / Hotwire ecosystem.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **React + Spring Boot REST API** | Industry standard pentru SPA-uri; ecosistem enorm; "Full Stack" în sens modern. | **Doublezi efortul de învățare:** Spring + React simultan pentru beginner = burnout. **CORS configurat manual.** **Build pipeline necesar:** Node, npm, Vite/webpack — încarcă proiectul. **2 limbaje, 2 deploy units, 2 dependency trees.** Pentru o probă într-o săptămână, ROI negativ. |
+| **Vue.js** | Mai prietenos decât React pentru începători; SFC `.vue` files. | Aceleași contra ca React, doar într-un ecosistem mai mic. |
+| **Alpine.js** | "jQuery modern", inline directives în HTML (`x-data`, `x-show`). Mic (~15KB). | **Pure client-side state**, nu face request server. Pentru CRUD-uri cu state DB-driven, ai nevoie totuși de logică de fetch — duplica HTMX pe scenariu mai limitat. **HTMX + Alpine** funcționează împreună (folosit împreună), dar fără cerință de state client, e overhead. |
+| **Vanilla JS + `fetch()`** | Zero dependențe. | **Boilerplate masiv** pentru fiecare delete/edit: scriu `fetch`, `.then`, DOM manipulation manual, error handling. La 10 endpoints, ai sute de linii JS replicate. **HTMX e exact abstractizarea peste asta.** |
+| **Turbo (Hotwire)** | Filosofie similară cu HTMX; folosit la Basecamp. | **Mai cuplat la Rails** convențional. **Spring integration via 3rd party** (turbo-spring), mai puțin maturat decât HTMX integration. |
+| **jQuery + AJAX clasic** | Familiar, prevalent în legacy. | **2010 vibes** la interviu. Sintaxa imperativă (manipulare DOM manuală), bundle mare (~85KB), nu mai e considered modern. |
+| **Server-side full refresh only** | Simplu, fără JS. | **UX rău:** delete → page reload → flash de încărcare → context pierdut (scroll, focus). Pentru "modern, impresionant", nu trece bara. |
+
+**Interview defense:** *"HTMX e pariul pe filosofia HOWL (Hypertext on Whatever Language) — server-side rendering modern. La un proiect Spring Boot + Thymeleaf, HTMX e mariajul natural: controller-ul returnează HTML fragment, HTMX face swap. Am evitat React/Vue pentru că ar fi dublat scope-ul de învățare fără a aduce valoare la cerințele acestei probe. Pentru un app cu state client complex (drag-drop, animations, offline), aș folosi React."*
+
+---
+
+### 2.5 Justificare detaliată: CSS framework — Tailwind + DaisyUI vs. alternative
+
+**De ce Tailwind CSS (Play CDN) + DaisyUI:**
+1. **Tailwind Play CDN = zero build pipeline.** Un singur `<script src="https://cdn.tailwindcss.com">` și ai tot Tailwind în pagină.
+2. **Utility-first** — class-uri atomice (`flex items-center gap-2 px-4 py-2 rounded-lg`) eliminate custom CSS pentru 95% din cazuri.
+3. **DaisyUI = componente pre-styled** (`btn btn-primary`, `card`, `modal`, `drawer`) peste Tailwind. Reduce verbose-ness.
+4. **Teme built-in DaisyUI** — `corporate`, `business`, `dim`, `dark` etc., switchable cu `data-theme="..."` pe `<html>`. Toggle de temă = feature gratis.
+5. **Look modern** — sătul de "Bootstrap 5 generic". DaisyUI arată distinct, profesional, 2024.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **Bootstrap 5** | Cel mai cunoscut framework; documentație excelentă; componente bogate. | **Look "Bootstrap-y"** instant recognizable, asociat cu sites din 2015-2020. **Class-uri puține și predictibile dar limitative** (`btn btn-primary` are 5 variante, nu poți customize ușor). Pentru "modern, impresionant" — nu trece bara, e prea common. |
+| **Bulma** | CSS pur (no JS), mai concis decât Bootstrap. | **Maintained slab** în ultimii 2 ani; comunitate mai mică. Look e tot "framework genericism". |
+| **Tailwind cu build pipeline (PostCSS, JIT)** | Bundle final optimizat (~10KB după purge); production-ready. | **Cere Node + npm + config** pe lângă build Maven. Dublezi setup-ul. **Play CDN are toate clasele oricum la dev**, doar la production ai costul (~3MB ungzipped). Pentru o probă, nu contează. |
+| **DaisyUI cu build** | Componente Tailwind plus optimizare. | Same as above — pipeline overhead. |
+| **Pico CSS** | Minimal (~10KB), folosește elemente HTML semantic (no class needed). | **Look prea minimalist** pentru "impresionant". Lipsesc componente complexe (drawer, modal complex). |
+| **Material UI / Material Design Lite** | Look standardizat Google. | **Massive bundle** (~300KB). Foarte opinionated visual — toate site-urile Material seamănă. |
+| **Custom CSS** | Control absolut. | **Time sink masiv** — zile întregi pentru a obține un look modern. Pentru un proiect de 1 săptămână, irațional. |
+
+**Interview defense:** *"Tailwind elimină hartuiala 'unde scriu CSS-ul ăsta?'. La un proiect mic, Play CDN e tradeoff acceptabil — la production cu trafic real, aș configura PostCSS build cu JIT pentru bundle de ~10KB. DaisyUI adaugă componente fără să încalce filosofia utility-first; dă cookie-cutter look out-of-the-box pe care îl pot customiza dacă vreau."*
+
+---
+
+### 2.6 Justificare detaliată: Database runtime — PostgreSQL vs. alternative
+
+**De ce PostgreSQL 16:**
+1. **DB serios open-source standard industry.** Folosit la Instagram, Reddit, Stripe (parțial). În Romania, larg adoptat.
+2. **Suport robust pentru toate feature-urile noastre:** UNIQUE constraints, indexes (B-tree pentru sort), JSON columns (dacă vrem extindere), Full-Text Search built-in.
+3. **Excelent cu Hibernate / JPA** — dialect maturat, fără surprize.
+4. **ACID strict** — necesar pentru upsert logic concurrent în scraping.
+5. **Pe Docker oficial alpine**: ~80MB image, start în <5s, healthcheck simplu.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **MySQL 8** | Foarte popular în Romania, hosting ieftin (cPanel, etc.). | **Defaults problematice istoric** (utf8 ≠ utf8mb4, MyISAM vs InnoDB pe versiuni vechi). **Suport JSON / indexare avansată mai recent** decât Postgres. **License Oracle ambiguă pentru MySQL Server** (Community vs Enterprise) — MariaDB e fork-ul. Pentru proiecte noi, Postgres e default-ul modern. |
+| **MariaDB** | MySQL fork, license GPL clară. | Aceleași limitări tehnice ca MySQL. Comunitate mai mică decât Postgres pentru tutoriale Spring Boot. |
+| **H2 in-memory** | Zero install, embeded in app, fast. | **Date pierdute la restart.** **Dialect 95% compatibil cu Postgres** dar 5% diferă (funcții specifice, tipuri). Risc: test trece pe H2, pică în prod pe Postgres. Folosit doar pentru `test` profile cu mock-uri simple. |
+| **SQLite** | Single file, zero server, embedded. | **Concurrency slabă** (file locking) — un singur writer la un timp. Cron-ul scraping ar putea bloca UI. **Lipsă tipuri stricte** până recent (3.37+). Folosit pentru aplicații desktop/mobile, nu server web. |
+| **MongoDB / DynamoDB / Cassandra** | NoSQL, schema-less, scalează horizontal. | **Cerința menționează SQL explicit** ("Problema web scraping + SQL"). **Schema noastră e relațională puternic** (produse, exchange_rates, users, scrape_runs). NoSQL ar fi anti-pattern. |
+| **Oracle DB** | Folosit în mari corporații (auto industry frecvent). | **License costisitoare** (~$47K/proc), instalare grea. Pentru o probă, prohibitiv. |
+| **SQL Server** | Foarte folosit în corporații .NET; license Express gratis. | **Mai puțin idiomatic în ecosistem Java/Spring.** Docker image (~1.5GB) prea greu pentru probă. |
+
+**Interview defense:** *"Postgres e default-ul modern pentru proiecte noi Java/Spring în 2026 — comunitatea Spring favorizează Postgres, are dialect Hibernate maturat, license MIT-like (PostgreSQL License) și suport bogat pentru feature-uri pe care le-am putea adăuga (JSON, full-text search, range types). MySQL ar fi fost ales 5-10 ani în urmă; astăzi Postgres e the safe modern choice."*
+
+---
+
+### 2.7 Justificare detaliată: ORM — Spring Data JPA vs. alternative
+
+**De ce Spring Data JPA + Hibernate:**
+1. **Default Spring Boot ORM**, integrare zero-config.
+2. **Repository pattern out-of-the-box:** scrii o interfață `extends JpaRepository<Product, Long>` și ai CRUD complet plus method query derivation (`findByName(String)` se traduce automat în SQL).
+3. **Specifications API** — query dinamic, type-safe, pentru filtering avansat (cerință în spec).
+4. **Tranzacții declarative** prin `@Transactional`.
+5. **JPQL + native SQL** când ai nevoie de query custom.
+6. **Maturat:** Hibernate 6.x stable, folosit la majoritatea companiilor Java enterprise.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **JOOQ** | Type-safe SQL DSL; generate cod din schema DB; control fin asupra SQL. | **Curve de învățare** suplimentară (DSL fluent custom, codegen pipeline). **Licență Dual** — open-source pentru open-source DB-uri (Postgres OK), comercial pentru Oracle/SQL Server. **Setup Maven plugin pentru codegen.** Pentru CRUD simplu, JPA e mai concis. JOOQ shine la reporting / queries complexe cu joins multiple. |
+| **MyBatis** | SQL written by hand, mapping XML/annotations; control total. | **Boilerplate XML** semnificativ. **Fără magic** = scrii tu fiecare query. Pentru CRUD repetitiv, e mult code. Folosit prevalent în firme asiatice (Korea, China), mai puțin în Europa. |
+| **jdbi** | Light wrapper peste JDBC; mai modern decât MyBatis. | **Manual mapping** ResultSet → entity. Lipsește lazy loading, schimbare detection (dirty checking). Mai puține bell-and-whistles decât JPA. |
+| **Plain JDBC + JdbcTemplate** | Maxim control, minim magic. | **Manual mapping** la fiecare query. Tracking changes inexistent. Pentru entități cu relații, devine repetitive. **Spring JdbcClient** (Java 21) e mai prietenos, dar tot mai verbose decât JPA. |
+| **Spring Data JDBC** (nou, non-Hibernate) | Mai simplu decât JPA, fără lazy loading magic. | **Specifications API nu există** la Spring Data JDBC (e doar Spring Data JPA feature). Pentru filtering dinamic, n-aș avea unealta principală. |
+| **Hibernate fără Spring Data** | Same Hibernate, fără layer-ul Spring Data abstractions. | Scrii manual `EntityManager.createQuery(...)` peste tot. Pierzi tot zahărul Spring Data. |
+
+**Risk acknowledged (Hibernate "magic"):** lazy loading + LazyInitializationException, N+1 queries, dirty checking în tranzacții — toate sunt capcane clasice. **Mitigation:** folosesc `@Transactional` pe service layer (nu controller), evit lazy collections în Thymeleaf templates (fetch eager pe queries explicit cu `JOIN FETCH` sau `EntityGraph`).
+
+**Interview defense:** *"Spring Data JPA pentru viteză de development — repository derivation și Specifications taie 80% din boilerplate. Sunt conștient că Hibernate are 'magic' care poate surprinde — N+1 queries, lazy init, cascade. Pentru fiecare query important folosesc `EntityGraph` sau JPQL explicit. JOOQ ar fi alegere mai serioasă pentru un sistem heavy-reporting; pentru CRUD + scraping, JPA câștigă pe productivity."*
+
+---
+
+### 2.8 Justificare detaliată: Migrări DB — Flyway vs. alternative
+
+**De ce Flyway 10.x:**
+1. **Versionare schemă în git** — fiecare migration e un fișier SQL imutabil (`V1__create_product.sql`, `V2__add_index.sql`).
+2. **Aplicat automat la startup Spring Boot** — `spring.flyway.enabled=true` (default).
+3. **Migration history tracked în DB** (tabela `flyway_schema_history`) — știi exact ce s-a aplicat și când.
+4. **SQL pur** — nu trebuie să înveți DSL custom; scrii Postgres SQL nativ.
+5. **Simplu de explicat:** "git pentru schemă DB".
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **Liquibase** | XML/YAML/JSON changelog (alternativă la SQL); rollback declarative. | **Verbose** — XML pentru un CREATE TABLE e mai mult tipart decât SQL pur. **Database-agnostic** (genereaza SQL diferit per DB) — câștig irelevant când știm că folosim Postgres. **Spring Boot starter există** dar comunitatea Spring favorizează Flyway. **La interviu:** "Liquibase?" — răspuns mai greu de apărat decât Flyway. |
+| **Hibernate `ddl-auto: update`** | Zero config; Hibernate generează SQL din entities. | **Periculos în producție** — modificări neașteptate, nu poate face DROP coloane, nu rollback. **No history.** **Tutoriale Spring Boot zic explicit** "don't use in production". Acceptabil DOAR în `test` profile. |
+| **Hibernate `ddl-auto: create-drop`** | Util pentru teste. | Distruge totul la fiecare start; doar pentru testing. |
+| **Manual SQL scripts** | Zero tooling. | **Manual coordinare** între developeri — cine a aplicat ce, când? Anti-pattern. |
+| **Liquibase Pro / Datical** | Enterprise features. | License cost. |
+
+**Convenție folosită:**
+- `V1__create_product_table.sql` (V + version + __ + descriere)
+- Migrations imutabile — odată committed, NU modifici. Adăugi `V2__alter_product_add_x.sql`.
+- Pentru data seed: `V4__seed_admin_user.sql` (versionat, NOT repeatable migration `R__`, ca să fie predictibil).
+
+**Interview defense:** *"Flyway pentru simplitate — SQL pur, versionat în git, applied automatic. Liquibase ar fi alegerea dacă proiectul ar trebui să suporte multiple DB engines paralele, but pentru single-engine (Postgres) e overhead. Hibernate `ddl-auto: update` e tentant pentru dev rapid, dar pierde control + reproducibilitate — într-o echipă de 5 oameni ar fi haos."*
+
+---
+
+### 2.9 Justificare detaliată: Autentificare — Spring Security vs. alternative
+
+**De ce Spring Security + form login + BCrypt:**
+1. **Industry standard Java** — orice job listing Java menționează Spring Security.
+2. **Filter chain configurabil**, security defaults strong (CSRF on, X-Frame headers, etc.).
+3. **BCrypt password encoder built-in** — algoritm slow-by-design, rezistent la GPU brute force.
+4. **Session-based via Spring Session** sau in-memory (default) — sustainable la scope-ul nostru.
+5. **Method-level security** disponibilă (`@PreAuthorize("hasRole('ADMIN')")`) — extensibil dacă scope-ul crește.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **Custom session-based auth (HttpSession + filter scris de mână)** | Control total, "I know exactly what's happening". | **Securitate prost-implementată e mai rea decât nicio securitate.** Trebuie să gestionezi: CSRF tokens, session fixation, secure cookie flags, timing-safe password compare, password hashing (cost adequat), brute force throttling. **Spring Security le face toate corect, by default.** La interviu, "ai scris auth de la zero?" = red flag major. |
+| **JWT (JSON Web Tokens)** | Stateless, scalează horizontal fără session store; popular în SPAs / mobile. | **Anti-pattern pentru server-rendered apps cu Thymeleaf.** JWT shine la API-uri consumed de SPA/mobile, unde browser nu poate folosi cookie session. Pentru web app monolitic cu form login, session-based e mai simplu + revocation imediată (logout = invalidate session). JWT necesită refresh tokens, blacklist pentru logout — complexitate fără câștig. |
+| **OAuth2 / OpenID Connect (Keycloak, Auth0, Okta)** | Auth ca service; SSO; user management UI gratis. | **Overkill brutal** pentru un proiect cu 1 user demo. Keycloak self-hosted = încă un container Docker (~700MB). Auth0/Okta = SaaS plătit. La interviu, "OAuth pentru un 1-user demo" = over-engineering. |
+| **Spring Security cu OAuth2 social login (Google, GitHub)** | UX modern, fără parole. | **Nu se aplică:** demo trebuie să fie accesibil recruiterului fără ca el să facă login cu contul lui personal. |
+| **Apache Shiro** | Alternativ matur la Spring Security. | **Comunitate mult mai mică.** Spring Boot integration mai puțin polished. Risk explicabilitate la interviu. |
+| **Basic Auth (HTTP Authorization: Basic)** | Simplu, built-in HTTP. | **UX rău** — browser nu are logout proper, popup de credentials, no remember-me, no friendly login page. Acceptabil pentru endpoint-uri tehnice (admin tools), inacceptabil pentru UI demo. |
+| **No auth** | Cel mai simplu. | **Cerința bonus explicită cere auth.** Lipsa = nu îndeplinești cerința. |
+
+**Interview defense:** *"Spring Security e default-ul Spring Boot pentru auth — îmi dă CSRF, BCrypt, session management, secure cookies out-of-the-box. JWT ar fi fost alegerea pentru un SPA + REST API, dar avem server-rendered Thymeleaf — JWT acolo introduce complexitate fără valoare. Pentru un 1-user demo cu posibilitate de extindere la multi-user, Spring Security cu `AppUser` în DB e exact dimensionat."*
+
+---
+
+### 2.10 Justificare detaliată: Test database strategy — Testcontainers vs. alternative
+
+**De ce Testcontainers Postgres:**
+1. **Test pe același DB engine ca producția.** Postgres real într-un container Docker, pornit per test session.
+2. **API simplu:**
+   ```java
+   @Container
+   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+   ```
+3. **Spring Boot integration** prin `@ServiceConnection` (Spring Boot 3.1+) — Spring detectează container-ul, configurează `DataSource` automat.
+4. **Reusable containers** (`testcontainers.reuse.enable=true`) — container pornit o dată, refolosit între run-uri de teste = ~30s overhead per test session devine ~2s per restart.
+5. **Reflectă realitatea producției** — funcții Postgres specifice (`jsonb`, full-text search, etc.) pot fi testate.
+
+**Alternative excluse:**
+
+| Alternativă | Pro | Contra care domină |
+|---|---|---|
+| **H2 in-memory** | Zero startup time (<1s); zero dependențe externe; rulează în CI fără Docker. | **Dialect 95% Postgres-compatible, 5% diferă.** Funcții Postgres-specifice (`array_agg`, `ILIKE`, `jsonb`) nu există sau merg diferit. **Risk concret:** test trece pe H2, fails on production Postgres. La proiecte mature, evitarea acestui anti-pattern e standard. **Acceptabil pentru `test` profile dezvoltare locală rapid (`mvn test -Dspring.profiles.active=test-h2`), nu pentru CI gate.** |
+| **HSQLDB / Derby** | Same as H2. | Same problems as H2, plus comunități mai mici. |
+| **Postgres local instalat** | Real engine. | **Nu reproductibil în CI** (necesită setup separat). **Conflict cu Postgres din Docker** dev (port 5432). |
+| **Postgres Docker rulat manual** | Real engine, predictabil. | **Coordinație manuală** — developer trebuie să-l pornească înainte de teste. Testcontainers automatizează asta. |
+| **Mock-uri toate (Mockito pentru repository)** | Zero DB. | **Specifications API se aplică pe `EntityManager`** — nu poți testa logica filtering fără DB real. Mock-uri pentru repository ar fi testat doar layer-ul service izolat — dar tot ai nevoie de un test real pentru repository. |
+| **In-memory Postgres (de ex. embedded-postgres)** | Real Postgres, fără Docker. | **Necesită native binaries** download per OS. **Maintenance slab.** Pe Windows e flaky. Testcontainers e mai reliable. |
+
+**Strategy combinată:**
+- **Unit tests** (service layer cu mock-uri pe repository) → JUnit + Mockito; **fără DB**, rapid.
+- **Repository slice tests** (`@DataJpaTest`) → Testcontainers Postgres; testează queries reale.
+- **Integration tests** (`@SpringBootTest`) → Testcontainers Postgres; smoke test full stack.
+
+**Interview defense:** *"Testcontainers e tradeoff-ul corect: ~2s overhead la repository tests pentru încrederea că ce văd la teste e ce văd live. H2 ar fi rapid dar divergent — am preferat un singur dialect (Postgres) peste tot. Pentru unit tests pe service layer, mock-uiesc repository-ul cu Mockito — niciun DB necesar, ms-uri per test."*
+
+---
 
 ### Decizii NU făcute (YAGNI)
 - ❌ Microservicii / multi-module Maven — overkill pentru scope.
