@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)" data-theme="corporate">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' — Autobrand'">Autobrand</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const next = html.getAttribute('data-theme') === 'corporate' ? 'dim' : 'corporate';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('theme') || 'corporate';
+            document.documentElement.setAttribute('data-theme', saved);
+        });
+    </script>
+</head>
+<body class="min-h-screen bg-base-200">
+<div class="drawer lg:drawer-open">
+    <input id="drawer-toggle" type="checkbox" class="drawer-toggle"/>
+    <div class="drawer-content flex flex-col">
+        <!-- Top navbar -->
+        <div class="navbar bg-base-100 shadow">
+            <div class="flex-none lg:hidden">
+                <label for="drawer-toggle" class="btn btn-square btn-ghost">☰</label>
+            </div>
+            <div class="flex-1 px-2 text-xl font-bold">🚗 Autobrand</div>
+            <button class="btn btn-ghost btn-circle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+        </div>
+
+        <!-- Flash messages -->
+        <div class="p-4">
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+            <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+        </div>
+
+        <!-- Main content -->
+        <main class="p-4 flex-1">
+            <th:block th:replace="${content}"></th:block>
+        </main>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="drawer-side">
+        <label for="drawer-toggle" class="drawer-overlay"></label>
+        <ul class="menu p-4 w-64 min-h-full bg-base-100">
+            <li class="text-sm font-bold opacity-50 px-2 mb-2">Navigation</li>
+            <li><a th:href="@{/}" class="font-medium">🏠 Dashboard</a></li>
+            <li><a th:href="@{/products}">📦 Products</a></li>
+            <li><a th:href="@{/invoice}">📄 Upload Invoice</a></li>
+            <li class="mt-4 text-sm font-bold opacity-50 px-2">Actions</li>
+            <li>
+                <form th:action="@{/admin/scrape}" method="post">
+                    <button type="submit" class="w-full text-left">🔄 Run Scrape Now</button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</div>
+</body>
+</html>

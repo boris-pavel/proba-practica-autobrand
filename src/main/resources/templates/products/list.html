@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ro" xmlns:th="http://www.thymeleaf.org">
+<head><title>Products</title></head>
+<body>
+<th:block th:replace="~{fragments/layout :: layout('Products', ~{::main-content})}">
+    <th:block th:fragment="main-content">
+        <h1 class="text-2xl font-bold mb-4">Products</h1>
+
+        <div class="overflow-x-auto bg-base-100 rounded-lg shadow">
+            <table class="table table-zebra">
+                <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>RON</th>
+                    <th>Edited?</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${page.content}">
+                    <td><img th:if="${p.imageUrl}" th:src="${p.imageUrl}" class="w-12 h-12 object-cover rounded"/></td>
+                    <td th:text="${p.name}"></td>
+                    <td th:text="${#strings.abbreviate(p.description, 50)}"></td>
+                    <td th:text="${p.price + ' ' + p.currency}"></td>
+                    <td th:text="${p.priceRon != null ? p.priceRon + ' RON' : '-'}"></td>
+                    <td>
+                        <span th:if="${p.manuallyEdited}" class="badge badge-warning">✏</span>
+                    </td>
+                    <td>
+                        <a th:href="@{/products/{id}/edit(id=${p.id})}" class="btn btn-sm btn-primary">Edit</a>
+                    </td>
+                </tr>
+                <tr th:if="${page.empty}">
+                    <td colspan="7" class="text-center opacity-50 py-8">
+                        No products yet. Click "Run Scrape Now" în sidebar.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 flex gap-2 items-center" th:if="${page.totalPages > 1}">
+            <span th:text="${'Page ' + (page.number + 1) + ' of ' + page.totalPages}"></span>
+        </div>
+    </th:block>
+</th:block>
+</body>
+</html>
