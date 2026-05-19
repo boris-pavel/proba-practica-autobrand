@@ -491,12 +491,15 @@ CREATE INDEX idx_scrape_run_started_at ON scrape_run(started_at DESC);
 ```
 
 ### Migration files
+
+Numerotate **cronologic** după ordinea de implementare (Flyway aplică migrațiile în ordinea version-number; ordinea de creare în plan dictează numerotarea):
+
 ```
-V1__create_product_table.sql
-V2__create_exchange_rate_table.sql
-V3__create_app_user_table.sql
-V4__seed_admin_user.sql
-V5__create_scrape_run_table.sql
+V1__create_product_table.sql       (Phase 2 — core domain)
+V2__create_app_user_table.sql      (Phase 8 — auth)
+V3__seed_admin_user.sql            (Phase 8 — auth)
+V4__create_exchange_rate_table.sql (Phase 10 — bonus #1)
+V5__create_scrape_run_table.sql    (Phase 11 — dashboard)
 ```
 
 ---
