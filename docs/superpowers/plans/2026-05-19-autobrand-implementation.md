@@ -935,7 +935,6 @@ class WebScrapingDevScraperTest {
 ```java
 package ro.autobrand.proba.scraper;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -944,6 +943,7 @@ import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ro.autobrand.proba.dto.ScrapedProductDto;
+import ro.autobrand.proba.exception.ScrapingException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -1062,7 +1062,8 @@ public class WebScrapingDevScraper implements Scraper {
         return new PriceParsed(amount, currency);
     }
 
-    private record PriceParsed(BigDecimal amount, String currency) {}
+    private record PriceParsed(BigDecimal amount, String currency) {
+    }
 }
 ```
 
